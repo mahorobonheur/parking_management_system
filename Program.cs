@@ -147,12 +147,17 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var db = services.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
+    var cfg = services.GetRequiredService<IConfiguration>();
+    var adminEmail = cfg["SeedData:AdminEmail"] ?? "admin@parking.local";
+    var adminPassword = cfg["SeedData:AdminPassword"] ?? "Admin@123";
+    var managerEmail = cfg["SeedData:ManagerEmail"] ?? "manager@parking.local";
+    var managerPassword = cfg["SeedData:ManagerPassword"] ?? "Manager@123";
     await SeedData.InitializeAsync(
         services,
-        adminEmail: "admin@parking.local",
-        adminPassword: "Admin@123",
-        managerEmail: "manager@parking.local",
-        managerPassword: "Manager@123");
+        adminEmail: adminEmail,
+        adminPassword: adminPassword,
+        managerEmail: managerEmail,
+        managerPassword: managerPassword);
     await ParkingLotBootstrap.EnsureAsync(db);
 }
 

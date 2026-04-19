@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../../../api'
 import { TrendingUp } from 'lucide-react'
+import { contentPanel, statCardTheme } from '../../../lib/dataDisplayThemes'
 
 export default function AdminOverviewPage() {
   const [overview, setOverview] = useState(null)
@@ -40,15 +41,17 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Overview</h1>
-        <p className="text-sm text-slate-400">KPIs, revenue trend, and occupancy by zone.</p>
+        <h1 className="text-2xl font-bold text-blue-950 dark:text-white">Overview</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">KPIs, revenue trend, and occupancy by zone.</p>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
       ) : null}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-cyan-500" />
         </div>
       ) : (
         <>
@@ -59,25 +62,29 @@ export default function AdminOverviewPage() {
                 ['Available', overview.availableSpaces],
                 ['Occupied', overview.occupiedSpaces],
                 ['Est. revenue today', `$${Number(overview.estimatedRevenueToday).toFixed(2)}`],
-              ].map(([label, val]) => (
-                <div key={label} className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">{val}</p>
-                </div>
-              ))}
+              ].map(([label, val], i) => {
+                const t = statCardTheme(i)
+                return (
+                  <div key={label} className={t.card}>
+                    <p className={t.label}>{label}</p>
+                    <p className={t.value}>{val}</p>
+                  </div>
+                )
+              })}
             </div>
           )}
           <div className="grid gap-8 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-6">
-              <div className="mb-4 flex items-center gap-2 text-slate-300">
-                <TrendingUp className="h-5 w-5 text-cyan-400" />
-                <h2 className="font-semibold text-white">Revenue (14 days)</h2>
+            <div className={contentPanel('emerald')}>
+              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-300/35 blur-2xl dark:bg-emerald-500/10" aria-hidden />
+              <div className="relative mb-4 flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h2 className="font-semibold text-emerald-950 dark:text-white">Revenue (14 days)</h2>
               </div>
-              <div className="flex h-40 items-end gap-1">
+              <div className="relative flex h-40 items-end gap-1">
                 {revenue.map((p) => (
                   <div key={p.day} className="group flex flex-1 flex-col items-center">
                     <div
-                      className="w-full max-w-[14px] rounded-t bg-gradient-to-t from-cyan-600 to-cyan-400 transition group-hover:from-cyan-500 group-hover:to-cyan-300"
+                      className="w-full max-w-[14px] rounded-t bg-gradient-to-t from-emerald-700 to-teal-400 transition group-hover:from-emerald-600 group-hover:to-lime-300"
                       style={{ height: `${(p.revenue / maxRev) * 100}%`, minHeight: p.revenue > 0 ? 8 : 0 }}
                       title={`${p.day}: $${p.revenue}`}
                     />
@@ -85,13 +92,14 @@ export default function AdminOverviewPage() {
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-6">
-              <h2 className="mb-4 font-semibold text-white">Occupancy by zone</h2>
-              <ul className="space-y-3">
+            <div className={contentPanel('rose')}>
+              <div className="pointer-events-none absolute -left-8 bottom-0 h-28 w-40 rounded-full bg-rose-300/30 blur-2xl dark:bg-rose-500/10" aria-hidden />
+              <h2 className="relative mb-4 font-semibold text-rose-950 dark:text-white">Occupancy by zone</h2>
+              <ul className="relative space-y-3">
                 {zones.map((z) => (
                   <li key={z.zone} className="flex justify-between text-sm">
-                    <span className="text-slate-300">{z.zone}</span>
-                    <span className="text-cyan-400">
+                    <span className="text-slate-700 dark:text-slate-300">{z.zone}</span>
+                    <span className="font-medium text-rose-700 dark:text-rose-300">
                       {z.occupiedSpaces} / {z.totalSpaces} occupied
                     </span>
                   </li>

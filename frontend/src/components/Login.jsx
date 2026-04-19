@@ -27,57 +27,54 @@ export default function Login() {
 
   return (
     <div className="flex justify-center py-12">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl backdrop-blur-xl">
+      <div className="w-full max-w-md rounded-3xl border border-blue-100 bg-white/95 p-8 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/70 dark:shadow-2xl">
         <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold text-white">Welcome back</h2>
-          <p className="mt-2 text-sm text-slate-400">Sign in to open your role-based dashboard.</p>
+          <h2 className="text-2xl font-bold text-blue-950 dark:text-white">Welcome back</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Sign in to open your role-based dashboard.</p>
         </div>
 
         {error ? (
-          <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-300">
+          <div className="mb-6 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-center text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </div>
         ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-400">Email</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-400">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+              className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-600 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-400">Password</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-400">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+              className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:brightness-110 disabled:opacity-50"
+            className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:brightness-110 disabled:opacity-50 dark:from-cyan-600 dark:to-blue-600 dark:shadow-blue-500/20"
           >
             {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : 'Sign in'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
           New here?{' '}
-          <Link to="/register" className="font-medium text-cyan-400 hover:text-cyan-300">
+          <Link to="/register" className="font-medium text-blue-700 hover:text-blue-900 dark:text-cyan-400 dark:hover:text-cyan-300">
             Create an account
           </Link>
-        </p>
-        <p className="mt-4 text-center text-xs text-slate-600">
-          Demo: admin@parking.local / Admin@123 · manager@parking.local / Manager@123
         </p>
       </div>
     </div>

@@ -22,34 +22,41 @@ import DriverLiveMapPage from './components/dashboard/driver/DriverLiveMapPage'
 import DriverVehiclesPage from './components/dashboard/driver/DriverVehiclesPage'
 import DriverBookPage from './components/dashboard/driver/DriverBookPage'
 import DriverReservationsPage from './components/dashboard/driver/DriverReservationsPage'
+import ThemeToggle from './components/ThemeToggle'
 
 function PublicHeader() {
   return (
-    <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+    <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-blue-200/80 pb-6 dark:border-white/10">
       <Link to="/" className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-lg font-bold text-white shadow-lg shadow-cyan-500/25">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-blue-800 text-lg font-bold text-white shadow-lg shadow-blue-600/25 dark:from-cyan-500 dark:to-blue-600 dark:shadow-cyan-500/25">
           P
         </div>
-        <span className="text-lg font-semibold tracking-tight text-white">ParkFlow</span>
+        <span className="text-lg font-semibold tracking-tight text-blue-950 dark:text-white">ParkFlow</span>
       </Link>
-      <nav className="flex gap-3 text-sm">
-        <Link to="/login" className="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/5 hover:text-white">
-          Sign in
-        </Link>
-        <Link
-          to="/register"
-          className="rounded-lg bg-white/10 px-3 py-2 font-medium text-white hover:bg-white/15"
-        >
-          Register
-        </Link>
-      </nav>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <nav className="flex gap-2 text-sm">
+          <Link
+            to="/login"
+            className="rounded-lg px-3 py-2 text-blue-800 hover:bg-blue-100 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/register"
+            className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-white/10 dark:hover:bg-white/15"
+          >
+            Register
+          </Link>
+        </nav>
+      </div>
     </header>
   )
 }
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen text-slate-900 dark:text-slate-100">
       <Routes>
         <Route
           path="/"

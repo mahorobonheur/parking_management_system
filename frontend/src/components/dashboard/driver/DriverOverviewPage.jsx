@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../../api'
+import { statCardTheme } from '../../../lib/dataDisplayThemes'
 
 export default function DriverOverviewPage() {
   const [activity, setActivity] = useState(null)
@@ -23,33 +24,39 @@ export default function DriverOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">My overview</h1>
-        <p className="text-sm text-slate-400">Reservations, on-site status, and last parked bay.</p>
+        <h1 className="text-2xl font-bold text-blue-950 dark:text-white">My overview</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Reservations, on-site status, and last parked bay.</p>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
       ) : null}
       {activity && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-            <p className="text-xs text-slate-500">Your reservations</p>
-            <p className="text-2xl font-semibold text-cyan-400">{activity.reservationsTotal}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-            <p className="text-xs text-slate-500">Active bookings</p>
-            <p className="text-2xl font-semibold text-white">{activity.activeReservations}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-            <p className="text-xs text-slate-500">On site now</p>
-            <p className="text-2xl font-semibold text-amber-400">{activity.hasActiveSession ? 'Yes' : 'No'}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-            <p className="text-xs text-slate-500">Find my car (last visit)</p>
-            <p className="text-lg font-semibold text-emerald-300">{activity.lastParkedSpaceNumber ?? '—'}</p>
-            {activity.lastCheckOutUtc ? (
-              <p className="text-[10px] text-slate-500">Exited {new Date(activity.lastCheckOutUtc).toLocaleString()}</p>
-            ) : null}
-          </div>
+          {[
+            { label: 'Your reservations', value: activity.reservationsTotal, valueClass: '' },
+            { label: 'Active bookings', value: activity.activeReservations, valueClass: '' },
+            { label: 'On site now', value: activity.hasActiveSession ? 'Yes' : 'No', valueClass: '' },
+            {
+              label: 'Find my car (last visit)',
+              value: activity.lastParkedSpaceNumber ?? '—',
+              valueClass: 'text-lg',
+              sub:
+                activity.lastCheckOutUtc != null
+                  ? `Exited ${new Date(activity.lastCheckOutUtc).toLocaleString()}`
+                  : null,
+            },
+          ].map((c, i) => {
+            const t = statCardTheme(i)
+            return (
+              <div key={c.label} className={t.card}>
+                <p className={`${t.label} normal-case`}>{c.label}</p>
+                <p className={[t.value, c.valueClass].filter(Boolean).join(' ')}>{c.value}</p>
+                {c.sub ? <p className="mt-1 text-[10px] text-slate-600/80 dark:text-slate-500">{c.sub}</p> : null}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

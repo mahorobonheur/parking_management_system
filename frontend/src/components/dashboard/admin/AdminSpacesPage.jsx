@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '../../../api'
 import { Plus, Trash2, Edit2, CarFront } from 'lucide-react'
+import { dataTableShell, tableBodyRow, tableHeadRow } from '../../../lib/dataDisplayThemes'
 import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
 
 const emptyForm = {
@@ -119,8 +120,8 @@ export default function AdminSpacesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Parking spaces</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-blue-950 dark:text-white">Parking spaces</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Slots for the site selected in the bar above — map row/column define the deck layout for that location. Switch sites to manage
             another place.
           </p>
@@ -134,17 +135,19 @@ export default function AdminSpacesPage() {
         </button>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
       ) : null}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-cyan-500" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-800/40">
+        <div className={dataTableShell('rose')}>
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400">
+              <tr className={tableHeadRow('rose')}>
                 <th className="p-3">Space</th>
                 <th className="p-3">Type</th>
                 <th className="p-3">Zone</th>
@@ -162,26 +165,30 @@ export default function AdminSpacesPage() {
                 </tr>
               ) : (
                 spaces.map((s) => (
-                  <tr key={s.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="p-3 font-medium text-white">{s.spaceNumber}</td>
-                    <td className="p-3 text-slate-400">{s.slotCategory || 'Standard'}</td>
-                    <td className="p-3 text-slate-400">{s.zone}</td>
-                    <td className="p-3 text-slate-300">${Number(s.hourlyRate).toFixed(2)}</td>
+                  <tr key={s.id} className={tableBodyRow('rose')}>
+                    <td className="p-3 font-medium text-slate-900 dark:text-white">{s.spaceNumber}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{s.slotCategory || 'Standard'}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{s.zone}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">${Number(s.hourlyRate).toFixed(2)}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs ${
                           s.isUnderMaintenance
-                            ? 'bg-slate-500/20 text-slate-300'
+                            ? 'bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300'
                             : s.status === 'Available'
-                              ? 'bg-emerald-500/15 text-emerald-400'
-                              : 'bg-amber-500/15 text-amber-300'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400'
+                              : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300'
                         }`}
                       >
                         {s.isUnderMaintenance ? 'Maintenance' : s.status}
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button type="button" onClick={() => openEdit(s)} className="mr-2 rounded-lg p-2 hover:bg-white/10">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(s)}
+                        className="mr-2 rounded-lg p-2 text-slate-600 hover:bg-rose-100 dark:text-slate-300 dark:hover:bg-white/10"
+                      >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button type="button" onClick={() => void remove(s.id)} className="rounded-lg p-2 hover:bg-red-500/20">
@@ -204,10 +211,10 @@ export default function AdminSpacesPage() {
         >
           <form
             onSubmit={saveSpace}
-            className="relative mx-auto mt-2 w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6 pb-8 shadow-2xl sm:mt-8 sm:mb-10"
+            className="relative mx-auto mt-2 w-full max-w-md space-y-4 rounded-2xl border border-blue-200 bg-white p-6 pb-8 shadow-xl sm:mt-8 sm:mb-10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-white">{editingId ? 'Edit space' : 'New space'}</h2>
+            <h2 className="text-lg font-bold text-blue-950 dark:text-white">{editingId ? 'Edit space' : 'New space'}</h2>
             <Field label="Space number" value={formData.spaceNumber} onChange={(v) => setFormData({ ...formData, spaceNumber: v })} required />
             <Field label="Location" value={formData.location} onChange={(v) => setFormData({ ...formData, location: v })} />
             <Field label="Zone" value={formData.zone} onChange={(v) => setFormData({ ...formData, zone: v })} />
@@ -225,12 +232,12 @@ export default function AdminSpacesPage() {
               onChange={(v) => setFormData({ ...formData, maxStayMinutes: v })}
             />
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Parking site</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Parking site</label>
               <select
                 required
                 value={formData.parkingLotId}
                 onChange={(e) => setFormData({ ...formData, parkingLotId: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 {lots.length === 0 ? (
                   <option value="">No sites — add under Sites</option>
@@ -245,11 +252,11 @@ export default function AdminSpacesPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Slot category</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Slot category</label>
               <select
                 value={formData.slotCategory}
                 onChange={(e) => setFormData({ ...formData, slotCategory: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="Standard">Standard</option>
                 <option value="Vip">VIP / reserved</option>
@@ -261,7 +268,7 @@ export default function AdminSpacesPage() {
               <Field label="Map row" type="number" value={formData.mapRow} onChange={(v) => setFormData({ ...formData, mapRow: v })} />
               <Field label="Map column" type="number" value={formData.mapColumn} onChange={(v) => setFormData({ ...formData, mapColumn: v })} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={formData.isUnderMaintenance}
@@ -271,18 +278,18 @@ export default function AdminSpacesPage() {
               Under maintenance (blocked)
             </label>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Status</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="Available">Available</option>
                 <option value="Occupied">Occupied</option>
               </select>
             </div>
             <div className="flex gap-2 pt-2">
-              <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-lg bg-slate-800 py-2 text-sm">
+              <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-lg border border-blue-200 bg-blue-50 py-2 text-sm text-slate-800 dark:border-transparent dark:bg-slate-800 dark:text-slate-200">
                 Cancel
               </button>
               <button type="submit" className="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 py-2 text-sm font-medium text-white">
@@ -299,14 +306,14 @@ export default function AdminSpacesPage() {
 function Field({ label, value, onChange, type = 'text', required, step }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-slate-400">{label}</label>
+      <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">{label}</label>
       <input
         type={type}
         step={step}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
       />
     </div>
   )

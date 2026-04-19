@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '../../../api'
 import { Plus, Edit2, Building2 } from 'lucide-react'
+import { dataTableShell, tableBodyRow, tableHeadRow } from '../../../lib/dataDisplayThemes'
 import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
 
 const emptyForm = { name: '', address: '', code: '' }
@@ -59,8 +60,8 @@ export default function AdminLocationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Parking sites</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-blue-950 dark:text-white">Parking sites</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Each site is a real-world location. Managers lay out spaces and map coordinates per site; drivers pick the site where they
             are parking before viewing the map or booking.
           </p>
@@ -74,20 +75,20 @@ export default function AdminLocationsPage() {
         </button>
       </div>
       {ctxError ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{ctxError}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">{ctxError}</div>
       ) : null}
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">{error}</div>
       ) : null}
       {loading && lots.length === 0 ? (
         <div className="flex justify-center py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-cyan-500" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-800/40">
+        <div className={dataTableShell('emerald')}>
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400">
+              <tr className={tableHeadRow('emerald')}>
                 <th className="p-3">Name</th>
                 <th className="p-3">Code</th>
                 <th className="p-3">Address</th>
@@ -103,19 +104,23 @@ export default function AdminLocationsPage() {
                 </tr>
               ) : (
                 lots.map((l) => (
-                  <tr key={l.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="p-3 font-medium text-white">
+                  <tr key={l.id} className={tableBodyRow('emerald')}>
+                    <td className="p-3 font-medium text-slate-900 dark:text-white">
                       {l.name}
                       {l.id === selectedLotId ? (
-                        <span className="ml-2 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-300">
                           Active in toolbar
                         </span>
                       ) : null}
                     </td>
-                    <td className="p-3 font-mono text-xs text-slate-400">{l.code}</td>
-                    <td className="p-3 text-slate-400">{l.address || '—'}</td>
+                    <td className="p-3 font-mono text-xs text-slate-600 dark:text-slate-400">{l.code}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{l.address || '—'}</td>
                     <td className="p-3 text-right">
-                      <button type="button" onClick={() => openEdit(l)} className="rounded-lg p-2 hover:bg-white/10">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(l)}
+                        className="rounded-lg p-2 text-slate-600 hover:bg-emerald-100 dark:text-slate-300 dark:hover:bg-white/10"
+                      >
                         <Edit2 className="h-4 w-4" />
                       </button>
                     </td>
@@ -135,40 +140,42 @@ export default function AdminLocationsPage() {
         >
           <form
             onSubmit={(e) => void save(e)}
-            className="relative mx-auto mt-2 w-full max-w-md space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-6 pb-8 shadow-2xl sm:mt-8 sm:mb-10"
+            className="relative mx-auto mt-2 w-full max-w-md space-y-4 rounded-2xl border border-blue-200 bg-white p-6 pb-8 shadow-xl sm:mt-8 sm:mb-10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-bold text-white">{editingId ? 'Edit site' : 'New parking site'}</h2>
+            <h2 className="text-lg font-bold text-blue-950 dark:text-white">{editingId ? 'Edit site' : 'New parking site'}</h2>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Display name</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Display name</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-                placeholder="e.g. Riverside Mall – Deck B"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                placeholder="e.g. Riverside Mall — Deck B"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Street / area (helps drivers search)</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Street / area (helps drivers search)</label>
               <input
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 placeholder="City, neighborhood, or full address"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Site code (optional — unique, A–Z 0–9 _ -)</label>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">
+                Site code (optional — unique, A–Z 0–9 _ -)
+              </label>
               <input
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-sm text-white"
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 placeholder={editingId ? 'Leave blank to keep current code' : 'Auto-generated if empty'}
               />
             </div>
             <div className="flex gap-2 pt-2">
-              <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-lg bg-slate-800 py-2 text-sm">
+              <button type="button" onClick={() => setModalOpen(false)} className="flex-1 rounded-lg border border-blue-200 bg-blue-50 py-2 text-sm text-slate-800 dark:border-transparent dark:bg-slate-800 dark:text-slate-200">
                 Cancel
               </button>
               <button

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../../api'
+import { dataTableShell, tableBodyRow, tableHeadRow } from '../../../lib/dataDisplayThemes'
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([])
@@ -35,21 +36,23 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Users</h1>
-        <p className="text-sm text-slate-400">View accounts and activate or deactivate access.</p>
+        <h1 className="text-2xl font-bold text-blue-950 dark:text-white">Users</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">View accounts and activate or deactivate access.</p>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
       ) : null}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-cyan-500" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-800/40">
+        <div className={dataTableShell('violet')}>
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-slate-400">
+              <tr className={tableHeadRow('violet')}>
                 <th className="p-3">Email</th>
                 <th className="p-3">Roles</th>
                 <th className="p-3">Status</th>
@@ -60,10 +63,10 @@ export default function AdminUsersPage() {
               {users.map((u) => {
                 const lockedOut = u.lockoutEnd && new Date(u.lockoutEnd) > new Date()
                 return (
-                  <tr key={u.id} className="border-b border-white/5">
-                    <td className="p-3 text-white">{u.email}</td>
-                    <td className="p-3 text-slate-400">{(u.roles || []).join(', ')}</td>
-                    <td className="p-3 text-slate-400">{lockedOut ? 'Locked' : 'Active'}</td>
+                  <tr key={u.id} className={tableBodyRow('violet')}>
+                    <td className="p-3 text-slate-900 dark:text-white">{u.email}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{(u.roles || []).join(', ')}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{lockedOut ? 'Locked' : 'Active'}</td>
                     <td className="p-3 text-right">
                       {lockedOut ? (
                         <button

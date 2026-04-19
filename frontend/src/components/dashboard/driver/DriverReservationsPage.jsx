@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../../../api'
 import { Timer, RefreshCw } from 'lucide-react'
+import { contentPanel } from '../../../lib/dataDisplayThemes'
 
 export default function DriverReservationsPage() {
   const [mine, setMine] = useState([])
@@ -34,29 +35,30 @@ export default function DriverReservationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">My reservations</h1>
-          <p className="text-sm text-slate-400">View or cancel upcoming bookings.</p>
+          <h1 className="text-2xl font-bold text-blue-950 dark:text-white">My reservations</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">View or cancel upcoming bookings.</p>
         </div>
         <button
           type="button"
           onClick={() => void loadMine()}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/5"
+          className="inline-flex items-center gap-2 rounded-xl border border-blue-200 px-4 py-2 text-sm text-blue-900 hover:bg-blue-50 dark:border-white/15 dark:text-slate-200 dark:hover:bg-white/5"
         >
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
       {error ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">{error}</div>
       ) : null}
-      <div className="rounded-2xl border border-white/10 bg-slate-800/40 p-6">
-        <div className="mb-4 flex items-center gap-2 text-white">
-          <Timer className="h-5 w-5 text-slate-300" />
+      <div className={contentPanel('violet')}>
+        <div className="pointer-events-none absolute -right-6 top-4 h-24 w-24 rounded-full bg-violet-300/30 blur-2xl dark:bg-violet-500/10" aria-hidden />
+        <div className="relative mb-4 flex items-center gap-2 text-violet-950 dark:text-white">
+          <Timer className="h-5 w-5 text-violet-600 dark:text-violet-300" />
           <h2 className="font-semibold">Bookings</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="text-slate-500">
+              <tr className="text-violet-900/70 dark:text-slate-400">
                 <th className="p-2">Space</th>
                 <th className="p-2">Window</th>
                 <th className="p-2">Status</th>
@@ -65,9 +67,9 @@ export default function DriverReservationsPage() {
             </thead>
             <tbody>
               {mine.map((r) => (
-                <tr key={r.id} className="border-t border-white/5">
-                  <td className="p-2 text-white">{r.parkingSpace?.spaceNumber ?? r.parkingSpaceId}</td>
-                  <td className="p-2 text-slate-400">
+                <tr key={r.id} className="border-t border-violet-200/60 dark:border-white/5">
+                  <td className="p-2 text-slate-900 dark:text-white">{r.parkingSpace?.spaceNumber ?? r.parkingSpaceId}</td>
+                  <td className="p-2 text-slate-600 dark:text-slate-400">
                     {new Date(r.startUtc).toLocaleString()} → {new Date(r.endUtc).toLocaleString()}
                   </td>
                   <td className="p-2">{r.status}</td>
