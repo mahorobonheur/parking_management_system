@@ -57,6 +57,25 @@ public class CheckOutByTicketDto
     public string TicketCode { get; set; } = string.Empty;
 }
 
+public class CheckoutPaymentDto
+{
+    public int SessionId { get; set; }
+
+    public string TicketCode { get; set; } = string.Empty;
+
+    /// <summary>Amount due in Rwandan francs.</summary>
+    public decimal AmountRwf { get; set; }
+
+    /// <summary>USSD code the payer should dial, e.g. *182*8*1*494031*1500#</summary>
+    public string UssdCode { get; set; } = string.Empty;
+
+    /// <summary>URI payload that mobile scanners can open in dialer.</summary>
+    public string DialerUri { get; set; } = string.Empty;
+
+    /// <summary>Alias of DialerUri for QR rendering clients.</summary>
+    public string QrPayload { get; set; } = string.Empty;
+}
+
 public class SessionSearchRowDto
 {
     public int SessionId { get; set; }
@@ -168,6 +187,42 @@ public class CreateVehicleDto
     public string? Label { get; set; }
 }
 
+public class CreateSpaceManagerDto
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(8)]
+    public string Password { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    public string? FullName { get; set; }
+}
+
+public class CreateParkingSpaceDto
+{
+    [Required]
+    public string SpaceNumber { get; set; } = string.Empty;
+
+    public string Status { get; set; } = "Available";
+    public string Location { get; set; } = string.Empty;
+    public string Zone { get; set; } = "General";
+    public decimal HourlyRate { get; set; }
+    public int? MaxStayMinutes { get; set; }
+    public int ParkingLotId { get; set; }
+    public string SlotCategory { get; set; } = SlotCategories.Standard;
+    public int? MapRow { get; set; }
+    public int? MapColumn { get; set; }
+    public bool IsUnderMaintenance { get; set; }
+    public int? Floor { get; set; }
+    public string? CustomLabel { get; set; }
+
+    /// <summary>If provided, a manager account is created/assigned to this space.</summary>
+    public CreateSpaceManagerDto? ManagerAccount { get; set; }
+}
+
 public class UserListItemDto
 {
     public string Id { get; set; } = string.Empty;
@@ -263,6 +318,10 @@ public class CreateParkingLotDto
     /// <summary>Optional unique code (letters/digits). Auto-generated if omitted.</summary>
     [MaxLength(32)]
     public string? Code { get; set; }
+
+    /// <summary>Default hourly fee for this site (Rwandan francs).</summary>
+    [Range(0, 1_000_000)]
+    public decimal DefaultHourlyRateRwf { get; set; } = 1000m;
 }
 
 public class UpdateParkingLotDto
@@ -276,6 +335,16 @@ public class UpdateParkingLotDto
 
     [MaxLength(32)]
     public string? Code { get; set; }
+
+    /// <summary>Default hourly fee for this site (Rwandan francs).</summary>
+    [Range(0, 1_000_000)]
+    public decimal DefaultHourlyRateRwf { get; set; }
+}
+
+public class PatchLotDefaultHourlyRateRwfDto
+{
+    [Range(0, 1_000_000)]
+    public decimal DefaultHourlyRateRwf { get; set; }
 }
 
 public class CreateWaitlistEntryDto

@@ -29,5 +29,8 @@ public class ParkingLot
     /// <summary>Optional JSON for operating hours (per integration); not enforced in MVP logic.</summary>
     public string? OperatingHoursJson { get; set; }
 
+    /// <summary>Default hourly parking fee for this site (Rwandan francs). Applied to all spaces when updated via site pricing.</summary>
+    public decimal DefaultHourlyRateRwf { get; set; } = 1000m;
+
     public ICollection<ParkingSpace> Spaces { get; set; } = new List<ParkingSpace>();
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagementSystem.Data;
 using ParkingManagementSystem.Models;
+using System.Security.Claims;
 
 namespace ParkingManagementSystem.Controllers;
 
@@ -12,6 +13,8 @@ namespace ParkingManagementSystem.Controllers;
 public class AvailabilityController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private bool IsManagerOnly => User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+    private string? ActorId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     public AvailabilityController(ApplicationDbContext db)
     {
@@ -55,7 +58,9 @@ public class AvailabilityController : ControllerBase
         var free = await (
             from s in _db.ParkingSpaces.AsNoTracking()
             join l in _db.ParkingLots.AsNoTracking() on s.ParkingLotId equals l.Id
-            where !blocked.Contains(s.Id) && (parkingLotId == null || s.ParkingLotId == parkingLotId)
+            where !blocked.Contains(s.Id)
+                  && (parkingLotId == null || s.ParkingLotId == parkingLotId)
+                  && (!IsManagerOnly || s.ManagerUserId == ActorId)
             orderby l.Name, s.Zone, s.SpaceNumber
             select new AvailabilitySpaceDto
             {
@@ -76,7 +81,9 @@ public class AvailabilityController : ControllerBase
     [HttpGet("live")]
     public async Task<ActionResult<LiveMapDto>> Live([FromQuery] int? parkingLotId, CancellationToken cancellationToken)
     {
-        var lotQuery = _db.ParkingLots.AsNoTracking().OrderBy(l => l.Id);
+        var lotQuery = _db.ParkingLots.AsNoTracking().OrderBy(l => l.Id).AsQueryable();
+        if (IsManagerOnly)
+            lotQuery = lotQuery.Where(l => _db.ParkingSpaces.Any(s => s.ParkingLotId == l.Id && s.ManagerUserId == ActorId));
         var lot = parkingLotId is int lid
             ? await lotQuery.FirstOrDefaultAsync(l => l.Id == lid, cancellationToken)
             : await lotQuery.FirstOrDefaultAsync(cancellationToken);
@@ -88,6 +95,7 @@ public class AvailabilityController : ControllerBase
         var spaces = await _db.ParkingSpaces
             .AsNoTracking()
             .Where(s => s.ParkingLotId == lot.Id)
+            .Where(s => !IsManagerOnly || s.ManagerUserId == ActorId)
             .OrderBy(s => s.MapRow)
             .ThenBy(s => s.MapColumn)
             .ThenBy(s => s.SpaceNumber)

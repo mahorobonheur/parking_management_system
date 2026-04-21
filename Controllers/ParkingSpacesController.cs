@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagementSystem.Data;
 using ParkingManagementSystem.Models;
+using System.Security.Claims;
 
 namespace ParkingManagementSystem.Controllers
 {
@@ -12,10 +14,12 @@ namespace ParkingManagementSystem.Controllers
     public class ParkingSpacesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ParkingSpacesController(ApplicationDbContext context)
+        public ParkingSpacesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [HttpGet]
@@ -24,6 +28,10 @@ namespace ParkingManagementSystem.Controllers
             CancellationToken cancellationToken)
         {
             var q = _context.ParkingSpaces.AsNoTracking().AsQueryable();
+            var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+            if (isManagerOnly)
+                q = q.Where(s => s.ManagerUserId == actorUserId);
             if (parkingLotId is int lid)
                 q = q.Where(s => s.ParkingLotId == lid);
             return await q.OrderBy(s => s.Zone).ThenBy(s => s.SpaceNumber).ToListAsync(cancellationToken);
@@ -38,12 +46,16 @@ namespace ParkingManagementSystem.Controllers
             {
                 return NotFound();
             }
+            var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+            if (isManagerOnly && parkingSpace.ManagerUserId != actorUserId)
+                return Forbid();
 
             return parkingSpace;
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = AppRoles.Admin)]
+        [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.ParkingManager}")]
         public async Task<IActionResult> PutParkingSpace(int id, ParkingSpace parkingSpace, CancellationToken cancellationToken)
         {
             if (id != parkingSpace.Id)
@@ -56,6 +68,10 @@ namespace ParkingManagementSystem.Controllers
             {
                 return NotFound();
             }
+            var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+            if (isManagerOnly && entity.ManagerUserId != actorUserId)
+                return Forbid();
 
             entity.SpaceNumber = parkingSpace.SpaceNumber;
             entity.Location = parkingSpace.Location;
@@ -88,8 +104,24 @@ namespace ParkingManagementSystem.Controllers
 
         [HttpPost]
         [Authorize(Roles = AppRoles.Admin)]
-        public async Task<ActionResult<ParkingSpace>> PostParkingSpace(ParkingSpace parkingSpace, CancellationToken cancellationToken)
+        public async Task<ActionResult<object>> PostParkingSpace([FromBody] CreateParkingSpaceDto dto, CancellationToken cancellationToken)
         {
+            var parkingSpace = new ParkingSpace
+            {
+                SpaceNumber = dto.SpaceNumber,
+                Status = dto.Status,
+                Location = dto.Location,
+                Zone = dto.Zone,
+                HourlyRate = dto.HourlyRate,
+                MaxStayMinutes = dto.MaxStayMinutes,
+                ParkingLotId = dto.ParkingLotId,
+                SlotCategory = dto.SlotCategory,
+                MapRow = dto.MapRow,
+                MapColumn = dto.MapColumn,
+                IsUnderMaintenance = dto.IsUnderMaintenance,
+                Floor = dto.Floor,
+                CustomLabel = dto.CustomLabel,
+            };
             parkingSpace.Status = string.IsNullOrWhiteSpace(parkingSpace.Status) ? "Available" : parkingSpace.Status;
             if (parkingSpace.ParkingLotId == 0)
             {
@@ -102,10 +134,52 @@ namespace ParkingManagementSystem.Controllers
             if (string.IsNullOrWhiteSpace(parkingSpace.SlotCategory))
                 parkingSpace.SlotCategory = SlotCategories.Standard;
 
+            var lotForRate = await _context.ParkingLots.FirstOrDefaultAsync(l => l.Id == parkingSpace.ParkingLotId, cancellationToken);
+            if (lotForRate is not null && parkingSpace.HourlyRate <= 0)
+                parkingSpace.HourlyRate = lotForRate.DefaultHourlyRateRwf;
+
+            string? managerInitialPassword = null;
+            if (dto.ManagerAccount is not null && !string.IsNullOrWhiteSpace(dto.ManagerAccount.Email))
+            {
+                var email = dto.ManagerAccount.Email.Trim();
+                var existing = await _userManager.FindByEmailAsync(email);
+                if (existing is null)
+                {
+                    var user = new ApplicationUser
+                    {
+                        UserName = email,
+                        Email = email,
+                        FullName = string.IsNullOrWhiteSpace(dto.ManagerAccount.FullName) ? "Parking Manager" : dto.ManagerAccount.FullName.Trim(),
+                        EmailConfirmed = true,
+                        OrganizationId = lotForRate?.OrganizationId,
+                    };
+                    var create = await _userManager.CreateAsync(user, dto.ManagerAccount.Password);
+                    if (!create.Succeeded)
+                        return BadRequest(new { error = string.Join("; ", create.Errors.Select(e => e.Description)) });
+                    await _userManager.AddToRoleAsync(user, AppRoles.ParkingManager);
+                    parkingSpace.ManagerUserId = user.Id;
+                    managerInitialPassword = dto.ManagerAccount.Password;
+                }
+                else
+                {
+                    if (!await _userManager.IsInRoleAsync(existing, AppRoles.ParkingManager))
+                        await _userManager.AddToRoleAsync(existing, AppRoles.ParkingManager);
+                    parkingSpace.ManagerUserId = existing.Id;
+                }
+            }
+
             _context.ParkingSpaces.Add(parkingSpace);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return CreatedAtAction(nameof(GetParkingSpace), new { id = parkingSpace.Id }, parkingSpace);
+            return CreatedAtAction(nameof(GetParkingSpace), new { id = parkingSpace.Id }, new
+            {
+                space = parkingSpace,
+                managerCredentials = dto.ManagerAccount is null ? null : new
+                {
+                    email = dto.ManagerAccount.Email,
+                    initialPassword = managerInitialPassword,
+                }
+            });
         }
 
         [HttpDelete("{id}")]

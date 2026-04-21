@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../../../api'
 import { RefreshCw } from 'lucide-react'
 import { statCardTheme } from '../../../lib/dataDisplayThemes'
+import { formatRwf } from '../../../lib/formatRwf'
 
 export default function AttendantOverviewPage() {
   const [overview, setOverview] = useState(null)
@@ -54,7 +55,7 @@ export default function AttendantOverviewPage() {
               ['Active sessions', overview.activeSessions],
               ['Available spaces', overview.availableSpaces],
               ['Upcoming reservations', overview.reservationsUpcoming],
-              ['Est. revenue today', `$${Number(overview.estimatedRevenueToday).toFixed(2)}`],
+              ['Est. revenue today (RWF)', formatRwf(overview.estimatedRevenueToday)],
             ].map(([k, v], i) => {
               const t = statCardTheme(i)
               return (

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ParkingManagementSystem.Data;
 
@@ -11,9 +12,11 @@ using ParkingManagementSystem.Data;
 namespace ParkingManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421173646_AddParkingLotDefaultHourlyRateRwf")]
+    partial class AddParkingLotDefaultHourlyRateRwf
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -489,9 +492,6 @@ namespace ParkingManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ManagerUserId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<int?>("MapColumn")
                         .HasColumnType("int");
 
@@ -521,8 +521,6 @@ namespace ParkingManagementSystem.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ManagerUserId");
 
                     b.HasIndex("ParkingLotId", "MapRow", "MapColumn");
 
@@ -854,18 +852,11 @@ namespace ParkingManagementSystem.Migrations
 
             modelBuilder.Entity("ParkingManagementSystem.Models.ParkingSpace", b =>
                 {
-                    b.HasOne("ParkingManagementSystem.Models.ApplicationUser", "ManagerUser")
-                        .WithMany()
-                        .HasForeignKey("ManagerUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("ParkingManagementSystem.Models.ParkingLot", "ParkingLot")
                         .WithMany("Spaces")
                         .HasForeignKey("ParkingLotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("ManagerUser");
 
                     b.Navigation("ParkingLot");
                 });

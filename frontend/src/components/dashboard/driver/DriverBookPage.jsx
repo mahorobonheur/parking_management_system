@@ -2,6 +2,7 @@ import { useState } from 'react'
 import api from '../../../api'
 import { MapPin, Ticket } from 'lucide-react'
 import { contentPanel } from '../../../lib/dataDisplayThemes'
+import { formatRwfPerHour } from '../../../lib/formatRwf'
 import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
 
 function toLocalInput(d) {
@@ -41,10 +42,18 @@ export default function DriverBookPage() {
     setError('')
     setMsg('')
     try {
+      const startInput = book.start || from
+      const endInput = book.end || to
+      const startDate = new Date(startInput)
+      const endDate = new Date(endInput)
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        setError('Please enter a valid start and end time.')
+        return
+      }
       await api.post('/api/Reservations', {
         parkingSpaceId: Number(book.parkingSpaceId),
-        startUtc: new Date(book.start).toISOString(),
-        endUtc: new Date(book.end).toISOString(),
+        startUtc: startDate.toISOString(),
+        endUtc: endDate.toISOString(),
       })
       setMsg('Reservation confirmed.')
       setBook({ parkingSpaceId: '', start: '', end: '' })
@@ -103,13 +112,22 @@ export default function DriverBookPage() {
                 key={a.id}
                 className="flex flex-col gap-0.5 rounded-lg border border-sky-200/60 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-950/60"
               >
-                <span className="font-medium text-blue-950 dark:text-white">
-                  #{a.id} {a.spaceNumber}
-                </span>
-                <span className="text-slate-600 dark:text-slate-400">
-                  {a.lotName ? <span className="text-slate-500">{a.lotName} · </span> : null}
-                  {a.zone} · ${Number(a.hourlyRate).toFixed(2)}/hr
-                </span>
+                <div>
+                  <span className="font-medium text-blue-950 dark:text-white">
+                    #{a.id} {a.spaceNumber}
+                  </span>
+                  <span className="ml-2 text-slate-600 dark:text-slate-400">
+                    {a.lotName ? <span className="text-slate-500">{a.lotName} · </span> : null}
+                    {a.zone} · {formatRwfPerHour(a.hourlyRate)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBook((b) => ({ ...b, parkingSpaceId: String(a.id) }))}
+                  className="mt-2 rounded-lg bg-blue-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-600 sm:mt-0"
+                >
+                  Use this space
+                </button>
               </li>
             ))}
           </ul>
@@ -122,14 +140,30 @@ export default function DriverBookPage() {
             <h2 className="font-semibold">New reservation</h2>
           </div>
           <form onSubmit={reserve} className="relative space-y-3">
-            <input
-              required
-              type="number"
-              placeholder="Space ID (from list)"
-              value={book.parkingSpaceId}
-              onChange={(e) => setBook({ ...book, parkingSpaceId: e.target.value })}
-              className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            />
+            {avail.length > 0 ? (
+              <select
+                required
+                value={book.parkingSpaceId}
+                onChange={(e) => setBook({ ...book, parkingSpaceId: e.target.value })}
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              >
+                <option value="">Select a space from availability results</option>
+                {avail.map((a) => (
+                  <option key={a.id} value={String(a.id)}>
+                    #{a.id} {a.spaceNumber} - {a.zone} - {formatRwfPerHour(a.hourlyRate)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                required
+                type="number"
+                placeholder="Space ID (search availability first)"
+                value={book.parkingSpaceId}
+                onChange={(e) => setBook({ ...book, parkingSpaceId: e.target.value })}
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              />
+            )}
             <label className="text-xs text-slate-600 dark:text-slate-400">Start</label>
             <input
               type="datetime-local"

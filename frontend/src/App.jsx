@@ -17,6 +17,7 @@ import AttendantOverviewPage from './components/dashboard/attendant/AttendantOve
 import AttendantLiveMapPage from './components/dashboard/attendant/AttendantLiveMapPage'
 import AttendantOperationsPage from './components/dashboard/attendant/AttendantOperationsPage'
 import AttendantReservationsPage from './components/dashboard/attendant/AttendantReservationsPage'
+import ManagerSitePricingPage from './components/dashboard/attendant/ManagerSitePricingPage'
 import DriverOverviewPage from './components/dashboard/driver/DriverOverviewPage'
 import DriverLiveMapPage from './components/dashboard/driver/DriverLiveMapPage'
 import DriverVehiclesPage from './components/dashboard/driver/DriverVehiclesPage'
@@ -173,6 +174,14 @@ export default function App() {
               element={
                 <RequireRole anyOf={['Attendant', 'ParkingManager']}>
                   <AttendantReservationsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="attendant/site-pricing"
+              element={
+                <RequireRole anyOf={['ParkingManager']}>
+                  <ManagerSitePricingPage />
                 </RequireRole>
               }
             />

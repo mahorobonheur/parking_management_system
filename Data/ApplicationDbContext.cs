@@ -106,6 +106,7 @@ namespace ParkingManagementSystem.Data
             {
                 entity.ToTable("ParkingLots");
                 entity.HasIndex(e => e.Code).IsUnique();
+                entity.Property(e => e.DefaultHourlyRateRwf).HasPrecision(18, 2);
                 entity.HasOne(e => e.Organization)
                     .WithMany(o => o.ParkingLots)
                     .HasForeignKey(e => e.OrganizationId)
@@ -116,11 +117,16 @@ namespace ParkingManagementSystem.Data
             {
                 entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
                 entity.HasIndex(e => new { e.ParkingLotId, e.MapRow, e.MapColumn });
+                entity.HasIndex(e => e.ManagerUserId);
                 entity.Property(e => e.CustomLabel).HasMaxLength(128);
                 entity.HasOne(e => e.ParkingLot)
                     .WithMany(l => l.Spaces)
                     .HasForeignKey(e => e.ParkingLotId)
                     .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ManagerUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ManagerUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             builder.Entity<Vehicle>(entity =>

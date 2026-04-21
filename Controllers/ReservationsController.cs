@@ -15,6 +15,7 @@ public class ReservationsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IParkingBroadcast _broadcast;
+    private bool IsManagerOnly => User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
 
     public ReservationsController(ApplicationDbContext db, IParkingBroadcast broadcast)
     {
@@ -42,11 +43,13 @@ public class ReservationsController : ControllerBase
     [Authorize(Roles = AppRoles.StaffRolesCsv)]
     public async Task<ActionResult<IEnumerable<Reservation>>> GetAll(CancellationToken cancellationToken)
     {
-        return await _db.Reservations
+        var q = _db.Reservations
             .AsNoTracking()
             .Include(r => r.ParkingSpace)
-            .OrderByDescending(r => r.StartUtc)
-            .ToListAsync(cancellationToken);
+            .AsQueryable();
+        if (IsManagerOnly)
+            q = q.Where(r => r.ParkingSpace != null && r.ParkingSpace.ManagerUserId == User.FindFirstValue(ClaimTypes.NameIdentifier));
+        return await q.OrderByDescending(r => r.StartUtc).ToListAsync(cancellationToken);
     }
 
     [HttpPost]
@@ -156,7 +159,11 @@ public class ReservationsController : ControllerBase
             return NotFound();
 
         if (AppRoles.IsStaff(User))
+        {
+            if (IsManagerOnly && reservation.ParkingSpace?.ManagerUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Forbid();
             return reservation;
+        }
 
         if (AppRoles.IsDriver(User) && reservation.ApplicationUserId == userId)
             return reservation;
@@ -174,6 +181,11 @@ public class ReservationsController : ControllerBase
 
         if (!AppRoles.IsStaff(User) && reservation.ApplicationUserId != userId)
             return Forbid();
+        if (IsManagerOnly && reservation.ParkingSpaceId != 0)
+        {
+            var allowed = await _db.ParkingSpaces.AnyAsync(s => s.Id == reservation.ParkingSpaceId && s.ManagerUserId == userId, cancellationToken);
+            if (!allowed) return Forbid();
+        }
 
         if (reservation.Status is "Cancelled" or "Completed")
             return NoContent();

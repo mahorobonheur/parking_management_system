@@ -7,7 +7,8 @@ import ThemeToggle from './ThemeToggle'
 
 function roleLabel(roles) {
   if (roles?.includes('Admin')) return 'Administrator'
-  if (roles?.includes('Attendant') || roles?.includes('ParkingManager')) return 'Attendant'
+  if (roles?.includes('ParkingManager')) return 'Parking manager'
+  if (roles?.includes('Attendant')) return 'Attendant'
   if (roles?.includes('Driver') || roles?.includes('User')) return 'Driver'
   return 'Guest'
 }
@@ -26,14 +27,18 @@ function navForRoles(roles) {
     }
   }
   if (roles.includes('Attendant') || roles.includes('ParkingManager')) {
+    const items = [
+      { path: 'overview', label: 'Overview', hint: 'KPIs' },
+      { path: 'map', label: 'Live map', hint: 'Deck' },
+      { path: 'operations', label: 'Entry & exit', hint: 'Tickets' },
+      { path: 'reservations', label: 'Reservations', hint: 'Schedule' },
+    ]
+    if (roles.includes('ParkingManager')) {
+      items.push({ path: 'site-pricing', label: 'Site pricing', hint: 'RWF / hr' })
+    }
     return {
       base: '/dashboard/attendant',
-      items: [
-        { path: 'overview', label: 'Overview', hint: 'KPIs' },
-        { path: 'map', label: 'Live map', hint: 'Deck' },
-        { path: 'operations', label: 'Entry & exit', hint: 'Tickets' },
-        { path: 'reservations', label: 'Reservations', hint: 'Schedule' },
-      ],
+      items,
     }
   }
   return {

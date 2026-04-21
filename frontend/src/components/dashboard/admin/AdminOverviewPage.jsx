@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../../../api'
 import { TrendingUp } from 'lucide-react'
 import { contentPanel, statCardTheme } from '../../../lib/dataDisplayThemes'
+import { formatRwf } from '../../../lib/formatRwf'
 
 export default function AdminOverviewPage() {
   const [overview, setOverview] = useState(null)
@@ -61,7 +62,7 @@ export default function AdminOverviewPage() {
                 ['Total spaces', overview.totalSpaces],
                 ['Available', overview.availableSpaces],
                 ['Occupied', overview.occupiedSpaces],
-                ['Est. revenue today', `$${Number(overview.estimatedRevenueToday).toFixed(2)}`],
+                ['Est. revenue today (RWF)', formatRwf(overview.estimatedRevenueToday)],
               ].map(([label, val], i) => {
                 const t = statCardTheme(i)
                 return (
@@ -86,7 +87,7 @@ export default function AdminOverviewPage() {
                     <div
                       className="w-full max-w-[14px] rounded-t bg-gradient-to-t from-emerald-700 to-teal-400 transition group-hover:from-emerald-600 group-hover:to-lime-300"
                       style={{ height: `${(p.revenue / maxRev) * 100}%`, minHeight: p.revenue > 0 ? 8 : 0 }}
-                      title={`${p.day}: $${p.revenue}`}
+                      title={`${p.day}: ${formatRwf(p.revenue)}`}
                     />
                   </div>
                 ))}

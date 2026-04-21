@@ -18,6 +18,7 @@ public static class ParkingLotBootstrap
                 Code = "MAIN",
                 Address = "Demo location",
                 OrganizationId = orgId,
+                DefaultHourlyRateRwf = 1000m,
             };
             db.ParkingLots.Add(lot);
             await db.SaveChangesAsync(cancellationToken);

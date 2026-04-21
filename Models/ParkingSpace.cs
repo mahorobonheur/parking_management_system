@@ -17,13 +17,18 @@ namespace ParkingManagementSystem.Models
 
         public string Zone { get; set; } = "General";
 
-        public decimal HourlyRate { get; set; } = 2.50m;
+        public decimal HourlyRate { get; set; } = 1000m;
 
         public int? MaxStayMinutes { get; set; }
 
         public int ParkingLotId { get; set; }
 
         public ParkingLot? ParkingLot { get; set; }
+
+        /// <summary>Optional assigned manager account that can operate this space.</summary>
+        public string? ManagerUserId { get; set; }
+
+        public ApplicationUser? ManagerUser { get; set; }
 
         /// <summary>One of <see cref="SlotCategories"/>.</summary>
         public string SlotCategory { get; set; } = SlotCategories.Standard;

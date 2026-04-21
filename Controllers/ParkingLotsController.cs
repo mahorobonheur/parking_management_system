@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ParkingManagementSystem.Data;
 using ParkingManagementSystem.Models;
+using System.Security.Claims;
 
 namespace ParkingManagementSystem.Controllers;
 
@@ -22,14 +23,30 @@ public class ParkingLotsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ParkingLot>>> List(CancellationToken cancellationToken)
     {
-        return await _db.ParkingLots.AsNoTracking().OrderBy(l => l.Name).ToListAsync(cancellationToken);
+        var q = _db.ParkingLots.AsNoTracking().AsQueryable();
+        var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+        if (isManagerOnly)
+        {
+            q = q.Where(l => _db.ParkingSpaces.Any(s => s.ParkingLotId == l.Id && s.ManagerUserId == actorUserId));
+        }
+        return await q.OrderBy(l => l.Name).ToListAsync(cancellationToken);
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ParkingLot>> Get(int id, CancellationToken cancellationToken)
     {
         var lot = await _db.ParkingLots.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
-        return lot is null ? NotFound() : lot;
+        if (lot is null)
+            return NotFound();
+        var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+        if (isManagerOnly)
+        {
+            var hasAccess = await _db.ParkingSpaces.AnyAsync(s => s.ParkingLotId == id && s.ManagerUserId == actorUserId, cancellationToken);
+            if (!hasAccess) return Forbid();
+        }
+        return lot;
     }
 
     [HttpPost]
@@ -42,11 +59,17 @@ public class ParkingLotsController : ControllerBase
         if (codeResult.Conflict)
             return Conflict(new { error = "That site code is already in use." });
 
+        var orgId = await ResolveOrganizationIdForCreateAsync(cancellationToken);
+        if (orgId is null)
+            return BadRequest(new { error = "No organization found. Create an organization first." });
+
         var lot = new ParkingLot
         {
             Name = dto.Name.Trim(),
             Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim(),
-            Code = codeResult.Code!
+            Code = codeResult.Code!,
+            DefaultHourlyRateRwf = Math.Round(dto.DefaultHourlyRateRwf, 2),
+            OrganizationId = orgId.Value,
         };
         _db.ParkingLots.Add(lot);
         await _db.SaveChangesAsync(cancellationToken);
@@ -71,6 +94,41 @@ public class ParkingLotsController : ControllerBase
         lot.Name = dto.Name.Trim();
         lot.Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim();
         lot.Code = codeResult.Code!;
+        var siteRate = Math.Round(dto.DefaultHourlyRateRwf, 2);
+        lot.DefaultHourlyRateRwf = siteRate;
+        var spaces = await _db.ParkingSpaces.Where(s => s.ParkingLotId == id).ToListAsync(cancellationToken);
+        foreach (var s in spaces)
+            s.HourlyRate = siteRate;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Sets the site default hourly rate (RWF) and applies it to all spaces in that site.</summary>
+    [HttpPatch("{id:int}/default-hourly-rate-rwf")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.ParkingManager}")]
+    public async Task<IActionResult> PatchDefaultHourlyRateRwf(int id, [FromBody] PatchLotDefaultHourlyRateRwfDto dto, CancellationToken cancellationToken)
+    {
+        var rate = Math.Round(dto.DefaultHourlyRateRwf, 2);
+        if (rate < 0)
+            return BadRequest(new { error = "Rate cannot be negative." });
+
+        var lot = await _db.ParkingLots.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
+        if (lot is null)
+            return NotFound();
+        var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isManagerOnly = User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+        if (isManagerOnly)
+        {
+            var hasAccess = await _db.ParkingSpaces.AnyAsync(s => s.ParkingLotId == id && s.ManagerUserId == actorUserId, cancellationToken);
+            if (!hasAccess) return Forbid();
+        }
+
+        lot.DefaultHourlyRateRwf = rate;
+        var spaces = await _db.ParkingSpaces.Where(s => s.ParkingLotId == id).ToListAsync(cancellationToken);
+        foreach (var s in spaces)
+            s.HourlyRate = rate;
+
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -119,5 +177,26 @@ public class ParkingLotsController : ControllerBase
 
         var fallback = ("L" + Guid.NewGuid().ToString("N"))[..9].ToUpperInvariant();
         return new CodeOutcome(fallback, null, false);
+    }
+
+    private async Task<int?> ResolveOrganizationIdForCreateAsync(CancellationToken cancellationToken)
+    {
+        var actorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrWhiteSpace(actorUserId))
+        {
+            var actorOrgId = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == actorUserId)
+                .Select(u => u.OrganizationId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (actorOrgId is int valid)
+                return valid;
+        }
+
+        return await _db.Organizations
+            .AsNoTracking()
+            .OrderBy(o => o.Id)
+            .Select(o => (int?)o.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

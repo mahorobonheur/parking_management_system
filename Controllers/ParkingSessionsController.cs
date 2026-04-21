@@ -32,18 +32,23 @@ public class ParkingSessionsController : ControllerBase
 
     private string? ActorId => User.FindFirstValue(ClaimTypes.NameIdentifier);
     private string? Ip => HttpContext.Connection.RemoteIpAddress?.ToString();
+    private bool IsManagerOnly => User.IsInRole(AppRoles.ParkingManager) && !User.IsInRole(AppRoles.Admin) && !User.IsInRole(AppRoles.Attendant);
+    private Task<bool> CanManagerAccessSpaceAsync(int spaceId, CancellationToken cancellationToken) =>
+        _db.ParkingSpaces.AnyAsync(s => s.Id == spaceId && s.ManagerUserId == ActorId, cancellationToken);
 
     [HttpGet("active")]
     [Authorize(Policy = AppPermissions.Policies.SessionsSearch)]
     public async Task<ActionResult<IEnumerable<ParkingSession>>> Active(CancellationToken cancellationToken)
     {
-        return await _db.ParkingSessions
+        var q = _db.ParkingSessions
             .AsNoTracking()
             .Include(s => s.ParkingSpace)
             .Include(s => s.User)
             .Where(s => s.CheckOutUtc == null)
-            .OrderBy(s => s.CheckInUtc)
-            .ToListAsync(cancellationToken);
+            .AsQueryable();
+        if (IsManagerOnly)
+            q = q.Where(s => s.ParkingSpace != null && s.ParkingSpace.ManagerUserId == ActorId);
+        return await q.OrderBy(s => s.CheckInUtc).ToListAsync(cancellationToken);
     }
 
     [HttpGet("search")]
@@ -62,6 +67,8 @@ public class ParkingSessionsController : ControllerBase
 
         if (parkingLotId is int lid)
             q = q.Where(x => x.l.Id == lid);
+        if (IsManagerOnly)
+            q = q.Where(x => x.sp.ManagerUserId == ActorId);
         if (!string.IsNullOrWhiteSpace(plate))
         {
             var p = plate.Trim();
@@ -121,6 +128,8 @@ public class ParkingSessionsController : ControllerBase
         var space = await _db.ParkingSpaces.FirstOrDefaultAsync(s => s.Id == dto.ParkingSpaceId, cancellationToken);
         if (space is null)
             return NotFound(new { error = "Space not found." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(dto.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         if (space.IsUnderMaintenance)
             return Conflict(new { error = "Space is under maintenance and cannot be used for check-in." });
@@ -194,7 +203,7 @@ public class ParkingSessionsController : ControllerBase
 
     [HttpPost("check-out-by-ticket")]
     [Authorize(Policy = AppPermissions.Policies.SessionsCheckOut)]
-    public async Task<ActionResult<ParkingSession>> CheckOutByTicket([FromBody] CheckOutByTicketDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<CheckoutPaymentDto>> CheckOutByTicket([FromBody] CheckOutByTicketDto dto, CancellationToken cancellationToken)
     {
         var code = dto.TicketCode.Trim();
         var session = await _db.ParkingSessions
@@ -203,13 +212,31 @@ public class ParkingSessionsController : ControllerBase
 
         if (session is null)
             return NotFound(new { error = "No active session for this ticket." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         return await CompleteCheckoutAsync(session, cancellationToken);
     }
 
+    [HttpPost("prepare-checkout-by-ticket")]
+    [Authorize(Policy = AppPermissions.Policies.SessionsCheckOut)]
+    public async Task<ActionResult<CheckoutPaymentDto>> PrepareCheckOutByTicket([FromBody] CheckOutByTicketDto dto, CancellationToken cancellationToken)
+    {
+        var code = dto.TicketCode.Trim();
+        var session = await _db.ParkingSessions
+            .Include(s => s.ParkingSpace)
+            .FirstOrDefaultAsync(s => s.TicketCode == code && s.CheckOutUtc == null, cancellationToken);
+        if (session is null)
+            return NotFound(new { error = "No active session for this ticket." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
+
+        return BuildCheckoutPayment(session, EstimateTotalDueNow(session));
+    }
+
     [HttpPost("{id:int}/check-out")]
     [Authorize(Policy = AppPermissions.Policies.SessionsCheckOut)]
-    public async Task<ActionResult<ParkingSession>> CheckOut(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<CheckoutPaymentDto>> CheckOut(int id, CancellationToken cancellationToken)
     {
         var session = await _db.ParkingSessions
             .Include(s => s.ParkingSpace)
@@ -219,19 +246,38 @@ public class ParkingSessionsController : ControllerBase
             return NotFound();
         if (session.CheckOutUtc is not null)
             return Conflict(new { error = "Session already closed." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         return await CompleteCheckoutAsync(session, cancellationToken);
     }
 
-    [HttpPost("{id:int}/force-checkout")]
-    [Authorize(Policy = AppPermissions.Policies.SessionsForceCheckout)]
-    public async Task<ActionResult<ParkingSession>> ForceCheckout(int id, CancellationToken cancellationToken)
+    [HttpPost("{id:int}/prepare-checkout")]
+    [Authorize(Policy = AppPermissions.Policies.SessionsCheckOut)]
+    public async Task<ActionResult<CheckoutPaymentDto>> PrepareCheckout(int id, CancellationToken cancellationToken)
     {
         var session = await _db.ParkingSessions
             .Include(s => s.ParkingSpace)
             .FirstOrDefaultAsync(s => s.Id == id && s.CheckOutUtc == null, cancellationToken);
         if (session is null)
             return NotFound(new { error = "No open session with that id." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
+
+        return BuildCheckoutPayment(session, EstimateTotalDueNow(session));
+    }
+
+    [HttpPost("{id:int}/force-checkout")]
+    [Authorize(Policy = AppPermissions.Policies.SessionsForceCheckout)]
+    public async Task<ActionResult<CheckoutPaymentDto>> ForceCheckout(int id, CancellationToken cancellationToken)
+    {
+        var session = await _db.ParkingSessions
+            .Include(s => s.ParkingSpace)
+            .FirstOrDefaultAsync(s => s.Id == id && s.CheckOutUtc == null, cancellationToken);
+        if (session is null)
+            return NotFound(new { error = "No open session with that id." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         await _audit.WriteAsync(ActorId, "session.force_checkout", "ParkingSession", id.ToString(),
             new { session.LicensePlate, session.ParkingSpaceId }, null, Ip, cancellationToken);
@@ -247,10 +293,14 @@ public class ParkingSessionsController : ControllerBase
             .FirstOrDefaultAsync(s => s.Id == id && s.CheckOutUtc == null, cancellationToken);
         if (session is null)
             return NotFound(new { error = "Open session not found." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         var newSpace = await _db.ParkingSpaces.FirstOrDefaultAsync(s => s.Id == dto.NewParkingSpaceId, cancellationToken);
         if (newSpace is null)
             return NotFound(new { error = "Target space not found." });
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(newSpace.Id, cancellationToken))
+            return Forbid();
         if (newSpace.IsUnderMaintenance)
             return Conflict(new { error = "Target space is under maintenance." });
         if (newSpace.ParkingLotId != session.ParkingSpace!.ParkingLotId)
@@ -281,6 +331,8 @@ public class ParkingSessionsController : ControllerBase
         var session = await _db.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id && s.CheckOutUtc == null, cancellationToken);
         if (session is null)
             return NotFound();
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
 
         var before = new { session.IncidentKind, session.Notes };
         session.IncidentKind = dto.IncidentKind;
@@ -296,7 +348,33 @@ public class ParkingSessionsController : ControllerBase
         return NoContent();
     }
 
-    private async Task<ActionResult<ParkingSession>> CompleteCheckoutAsync(ParkingSession session, CancellationToken cancellationToken)
+    private const string MomoMerchantCode = "494031";
+
+    private static CheckoutPaymentDto BuildCheckoutPayment(ParkingSession session, decimal totalDue)
+    {
+        // Mobile money USSD expects integer francs.
+        var amount = Math.Max(0, (int)Math.Ceiling(totalDue));
+        var ussd = $"*182*8*1*{MomoMerchantCode}*{amount}#";
+        var dialerUri = $"tel:{ussd.Replace("#", "%23")}";
+        return new CheckoutPaymentDto
+        {
+            SessionId = session.Id,
+            TicketCode = session.TicketCode,
+            AmountRwf = amount,
+            UssdCode = ussd,
+            DialerUri = dialerUri,
+            QrPayload = dialerUri
+        };
+    }
+
+    private static decimal EstimateTotalDueNow(ParkingSession session)
+    {
+        var hourlyRate = session.ParkingSpace?.HourlyRate ?? 0m;
+        var billableHours = Math.Max(1m, (decimal)Math.Ceiling((DateTime.UtcNow - session.CheckInUtc).TotalHours));
+        return Math.Round(billableHours * hourlyRate, 2);
+    }
+
+    private async Task<ActionResult<CheckoutPaymentDto>> CompleteCheckoutAsync(ParkingSession session, CancellationToken cancellationToken)
     {
         var space = session.ParkingSpace ?? await _db.ParkingSpaces.FirstAsync(s => s.Id == session.ParkingSpaceId, cancellationToken);
         var end = DateTime.UtcNow;
@@ -320,7 +398,7 @@ public class ParkingSessionsController : ControllerBase
         await _webhooks.PublishAsync("session.ended", new { session.Id, session.ParkingSpaceId, session.TotalDue }, orgEnd, cancellationToken);
         await _audit.WriteAsync(ActorId, "session.check_out", "ParkingSession", session.Id.ToString(),
             new { session.ParkingSpaceId, session.LicensePlate }, new { session.TotalDue, session.CheckOutUtc }, Ip, cancellationToken);
-        return session;
+        return BuildCheckoutPayment(session, session.TotalDue ?? 0m);
     }
 
     [HttpGet("{id:int}")]
@@ -333,7 +411,11 @@ public class ParkingSessionsController : ControllerBase
             .Include(s => s.User)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
-        return session is null ? NotFound() : session;
+        if (session is null)
+            return NotFound();
+        if (IsManagerOnly && !await CanManagerAccessSpaceAsync(session.ParkingSpaceId, cancellationToken))
+            return Forbid();
+        return session;
     }
 
     private Task<int?> GetOrganizationIdForSpaceAsync(int parkingSpaceId, CancellationToken cancellationToken) =>

@@ -3,29 +3,35 @@ import api from '../../../api'
 import { Plus, Trash2, Edit2, CarFront } from 'lucide-react'
 import { dataTableShell, tableBodyRow, tableHeadRow } from '../../../lib/dataDisplayThemes'
 import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
+import { formatRwfPerHour } from '../../../lib/formatRwf'
 
 const emptyForm = {
   spaceNumber: '',
   location: '',
   status: 'Available',
   zone: 'General',
-  hourlyRate: 2.5,
+  hourlyRate: 1000,
   maxStayMinutes: '',
   parkingLotId: '',
   slotCategory: 'Standard',
   mapRow: '',
   mapColumn: '',
   isUnderMaintenance: false,
+  managerEmail: '',
+  managerFullName: '',
+  managerPassword: '',
 }
 
 export default function AdminSpacesPage() {
-  const { selectedLotId, lots } = useSelectedParkingLot()
+  const { selectedLotId, lots, selectedLot } = useSelectedParkingLot()
+  const siteDefaultRate = selectedLot?.defaultHourlyRateRwf ?? 1000
   const [spaces, setSpaces] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [createdManagerCreds, setCreatedManagerCreds] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -49,19 +55,21 @@ export default function AdminSpacesPage() {
     setEditingId(null)
     setFormData({
       ...emptyForm,
+      hourlyRate: siteDefaultRate,
       parkingLotId: selectedLotId != null ? String(selectedLotId) : '',
     })
     setModalOpen(true)
   }
 
   const openEdit = (s) => {
+    const lotForSpace = lots.find((l) => l.id === s.parkingLotId)
     setEditingId(s.id)
     setFormData({
       spaceNumber: s.spaceNumber,
       location: s.location || '',
       status: s.status,
       zone: s.zone || 'General',
-      hourlyRate: s.hourlyRate ?? 2.5,
+      hourlyRate: s.hourlyRate ?? lotForSpace?.defaultHourlyRateRwf ?? 1000,
       maxStayMinutes: s.maxStayMinutes ?? '',
       parkingLotId: s.parkingLotId != null ? String(s.parkingLotId) : '',
       slotCategory: s.slotCategory || 'Standard',
@@ -77,6 +85,10 @@ export default function AdminSpacesPage() {
     const lotId = Number(formData.parkingLotId) || selectedLotId || lots[0]?.id
     if (!lotId) {
       setError('Add a parking site under Sites before creating spaces.')
+      return
+    }
+    if (!editingId && formData.managerEmail.trim() && !formData.managerPassword) {
+      setError('Enter an initial password for the manager account.')
       return
     }
     const body = {
@@ -97,7 +109,18 @@ export default function AdminSpacesPage() {
       if (editingId) await api.put(`/api/ParkingSpaces/${editingId}`, { ...body, id: editingId })
       else {
         const { id: _i, ...create } = body
-        await api.post('/api/ParkingSpaces', create)
+        const payload = {
+          ...create,
+          managerAccount: formData.managerEmail.trim()
+            ? {
+                email: formData.managerEmail.trim(),
+                password: formData.managerPassword,
+                fullName: formData.managerFullName.trim() || null,
+              }
+            : null,
+        }
+        const { data } = await api.post('/api/ParkingSpaces', payload)
+        if (data?.managerCredentials?.email) setCreatedManagerCreds(data.managerCredentials)
       }
       setModalOpen(false)
       await load()
@@ -139,6 +162,16 @@ export default function AdminSpacesPage() {
           {error}
         </div>
       ) : null}
+      {createdManagerCreds ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200">
+          Manager account assigned: <span className="font-semibold">{createdManagerCreds.email}</span>
+          {createdManagerCreds.initialPassword ? (
+            <span className="block text-xs">Initial password: {createdManagerCreds.initialPassword}</span>
+          ) : (
+            <span className="block text-xs">Existing manager account linked to this space.</span>
+          )}
+        </div>
+      ) : null}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-cyan-500" />
@@ -151,7 +184,7 @@ export default function AdminSpacesPage() {
                 <th className="p-3">Space</th>
                 <th className="p-3">Type</th>
                 <th className="p-3">Zone</th>
-                <th className="p-3">$/hr</th>
+                <th className="p-3">RWF / hr</th>
                 <th className="p-3">Status</th>
                 <th className="p-3 text-right">Actions</th>
               </tr>
@@ -169,7 +202,7 @@ export default function AdminSpacesPage() {
                     <td className="p-3 font-medium text-slate-900 dark:text-white">{s.spaceNumber}</td>
                     <td className="p-3 text-slate-600 dark:text-slate-400">{s.slotCategory || 'Standard'}</td>
                     <td className="p-3 text-slate-600 dark:text-slate-400">{s.zone}</td>
-                    <td className="p-3 text-slate-700 dark:text-slate-300">${Number(s.hourlyRate).toFixed(2)}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">{formatRwfPerHour(s.hourlyRate)}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs ${
@@ -219,7 +252,7 @@ export default function AdminSpacesPage() {
             <Field label="Location" value={formData.location} onChange={(v) => setFormData({ ...formData, location: v })} />
             <Field label="Zone" value={formData.zone} onChange={(v) => setFormData({ ...formData, zone: v })} />
             <Field
-              label="Hourly rate (USD)"
+              label="Hourly rate (RWF)"
               type="number"
               step="0.01"
               value={formData.hourlyRate}
@@ -277,6 +310,15 @@ export default function AdminSpacesPage() {
               />
               Under maintenance (blocked)
             </label>
+            {!editingId ? (
+              <div className="space-y-2 rounded-lg border border-emerald-200/70 bg-emerald-50/60 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-300">Optional manager account for this space</p>
+                <Field label="Manager email" type="email" value={formData.managerEmail} onChange={(v) => setFormData({ ...formData, managerEmail: v })} />
+                <Field label="Manager full name" value={formData.managerFullName} onChange={(v) => setFormData({ ...formData, managerFullName: v })} />
+                <Field label="Manager initial password" type="password" value={formData.managerPassword} onChange={(v) => setFormData({ ...formData, managerPassword: v })} />
+                <p className="text-[10px] text-slate-500">If email is provided, password is required and this account gets ParkingManager role.</p>
+              </div>
+            ) : null}
             <div>
               <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Status</label>
               <select

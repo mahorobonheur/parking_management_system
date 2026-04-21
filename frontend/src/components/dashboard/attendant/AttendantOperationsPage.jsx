@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../../../api'
 import { Activity, LogIn, LogOut, Ticket, QrCode } from 'lucide-react'
 import { contentPanel } from '../../../lib/dataDisplayThemes'
+import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
 
 const qrImg = (payload) =>
   `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payload || '')}`
@@ -14,7 +15,9 @@ function apiErrorMessage(err, fallback) {
 }
 
 export default function AttendantOperationsPage() {
+  const { selectedLotId } = useSelectedParkingLot()
   const [active, setActive] = useState([])
+  const [spaces, setSpaces] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [checkIn, setCheckIn] = useState({
@@ -25,14 +28,20 @@ export default function AttendantOperationsPage() {
     applicationUserId: '',
   })
   const [lastTicket, setLastTicket] = useState(null)
+  const [lastPayment, setLastPayment] = useState(null)
   const [ticketOut, setTicketOut] = useState('')
+  const [pendingCheckout, setPendingCheckout] = useState(null)
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.get('/api/ParkingSessions/active')
-      setActive(data)
+      const [sessionsRes, spacesRes] = await Promise.all([
+        api.get('/api/ParkingSessions/active'),
+        api.get('/api/ParkingSpaces', { params: selectedLotId != null ? { parkingLotId: selectedLotId } : {} }),
+      ])
+      setActive(sessionsRes.data)
+      setSpaces(spacesRes.data || [])
     } catch (e) {
       setError(apiErrorMessage(e, 'Failed to load sessions.'))
     } finally {
@@ -42,7 +51,7 @@ export default function AttendantOperationsPage() {
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [selectedLotId])
 
   const submitCheckIn = async (e) => {
     e.preventDefault()
@@ -66,8 +75,9 @@ export default function AttendantOperationsPage() {
   const doCheckOut = async (id) => {
     setError('')
     try {
-      await api.post(`/api/ParkingSessions/${id}/check-out`)
-      await load()
+      const { data } = await api.post(`/api/ParkingSessions/${id}/prepare-checkout`)
+      setLastPayment(data)
+      setPendingCheckout({ mode: 'id', id })
     } catch (err) {
       setError(apiErrorMessage(err, 'Check-out failed.'))
     }
@@ -77,11 +87,29 @@ export default function AttendantOperationsPage() {
     e.preventDefault()
     setError('')
     try {
-      await api.post('/api/ParkingSessions/check-out-by-ticket', { ticketCode: ticketOut.trim() })
+      const code = ticketOut.trim()
+      const { data } = await api.post('/api/ParkingSessions/prepare-checkout-by-ticket', { ticketCode: code })
+      setLastPayment(data)
+      setPendingCheckout({ mode: 'ticket', ticketCode: code })
       setTicketOut('')
-      await load()
     } catch (err) {
       setError(apiErrorMessage(err, 'Ticket check-out failed.'))
+    }
+  }
+
+  const finalizeCheckout = async () => {
+    if (!pendingCheckout) return
+    setError('')
+    try {
+      if (pendingCheckout.mode === 'id') {
+        await api.post(`/api/ParkingSessions/${pendingCheckout.id}/check-out`)
+      } else {
+        await api.post('/api/ParkingSessions/check-out-by-ticket', { ticketCode: pendingCheckout.ticketCode })
+      }
+      setPendingCheckout(null)
+      await load()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not complete checkout.'))
     }
   }
 
@@ -103,15 +131,20 @@ export default function AttendantOperationsPage() {
             <h2 className="font-semibold">Check-in</h2>
           </div>
           <form onSubmit={submitCheckIn} className="relative space-y-3">
-            <input
+            <select
               required
-              type="number"
-              min={1}
-              placeholder="Parking space ID (numeric id from Spaces admin)"
               value={checkIn.parkingSpaceId}
               onChange={(e) => setCheckIn({ ...checkIn, parkingSpaceId: e.target.value })}
               className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            />
+            >
+              <option value="">Select parking space</option>
+              {spaces.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  #{s.id} {s.spaceNumber} - {s.zone}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500">Pick a space from the list instead of typing ID manually.</p>
             <input
               required
               placeholder="License plate"
@@ -162,7 +195,7 @@ export default function AttendantOperationsPage() {
                 className="flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 font-mono text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
               <button type="submit" className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">
-                Check out
+                Generate payment
               </button>
             </form>
           </div>
@@ -195,7 +228,7 @@ export default function AttendantOperationsPage() {
                       onClick={() => void doCheckOut(s.id)}
                       className="inline-flex items-center gap-1 rounded-lg bg-amber-600/90 px-3 py-1 text-xs font-medium text-white hover:bg-amber-500"
                     >
-                      <LogOut className="h-3 w-3" /> Check out
+                      <LogOut className="h-3 w-3" /> Collect payment
                     </button>
                   </li>
                 ))}
@@ -229,6 +262,49 @@ export default function AttendantOperationsPage() {
             className="relative mt-4 text-sm text-violet-800 hover:underline dark:text-slate-400 dark:hover:text-white"
           >
             Dismiss
+          </button>
+        </div>
+      ) : null}
+      {lastPayment ? (
+        <div className={contentPanel('emerald')}>
+          <div className="pointer-events-none absolute right-6 top-6 h-32 w-32 rounded-full bg-emerald-300/30 blur-2xl dark:bg-emerald-500/10" aria-hidden />
+          <div className="relative flex flex-wrap items-start justify-between gap-6">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+                <QrCode className="h-5 w-5" />
+                <h2 className="font-semibold text-emerald-950 dark:text-white">Payment in RWF</h2>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                Amount due: <span className="font-semibold text-emerald-900 dark:text-emerald-300">RWF {Number(lastPayment.amountRwf || 0).toLocaleString()}</span>
+              </p>
+              <p className="mt-2 font-mono text-sm text-emerald-950 dark:text-emerald-200">{lastPayment.ussdCode}</p>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Scan QR to open dialer with the payment code prefilled.</p>
+              <a
+                href={lastPayment.dialerUri}
+                className="mt-3 inline-flex rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+              >
+                Open dialer
+              </a>
+              <button
+                type="button"
+                onClick={() => void finalizeCheckout()}
+                className="ml-2 mt-3 inline-flex rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-600"
+              >
+                Complete checkout after payment
+              </button>
+            </div>
+            <img
+              src={qrImg(lastPayment.qrPayload)}
+              alt="Payment QR"
+              className="h-40 w-40 rounded-lg border border-emerald-200 bg-white p-1 dark:border-white/10"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastPayment(null)}
+            className="relative mt-4 text-sm text-emerald-800 hover:underline dark:text-slate-400 dark:hover:text-white"
+          >
+            Dismiss payment prompt
           </button>
         </div>
       ) : null}

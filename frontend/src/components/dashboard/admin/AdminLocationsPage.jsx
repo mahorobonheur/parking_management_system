@@ -2,9 +2,10 @@ import { useState } from 'react'
 import api from '../../../api'
 import { Plus, Edit2, Building2 } from 'lucide-react'
 import { dataTableShell, tableBodyRow, tableHeadRow } from '../../../lib/dataDisplayThemes'
+import { formatRwfPerHour } from '../../../lib/formatRwf'
 import { useSelectedParkingLot } from '../../../context/SelectedParkingLotContext'
 
-const emptyForm = { name: '', address: '', code: '' }
+const emptyForm = { name: '', address: '', code: '', defaultHourlyRateRwf: 1000 }
 
 export default function AdminLocationsPage() {
   const { lots, loading, error: ctxError, reloadLots, setSelectedLotId, selectedLotId } = useSelectedParkingLot()
@@ -16,14 +17,19 @@ export default function AdminLocationsPage() {
 
   const openNew = () => {
     setEditingId(null)
-    setForm(emptyForm)
+    setForm({ ...emptyForm })
     setError('')
     setModalOpen(true)
   }
 
   const openEdit = (lot) => {
     setEditingId(lot.id)
-    setForm({ name: lot.name, address: lot.address ?? '', code: lot.code ?? '' })
+    setForm({
+      name: lot.name,
+      address: lot.address ?? '',
+      code: lot.code ?? '',
+      defaultHourlyRateRwf: lot.defaultHourlyRateRwf ?? 1000,
+    })
     setError('')
     setModalOpen(true)
   }
@@ -38,12 +44,14 @@ export default function AdminLocationsPage() {
           name: form.name.trim(),
           address: form.address.trim() || null,
           code: form.code.trim() || null,
+          defaultHourlyRateRwf: Number(form.defaultHourlyRateRwf),
         })
       } else {
         const { data } = await api.post('/api/ParkingLots', {
           name: form.name.trim(),
           address: form.address.trim() || null,
           code: form.code.trim() || null,
+          defaultHourlyRateRwf: Number(form.defaultHourlyRateRwf),
         })
         if (data?.id) setSelectedLotId(data.id)
       }
@@ -91,6 +99,7 @@ export default function AdminLocationsPage() {
               <tr className={tableHeadRow('emerald')}>
                 <th className="p-3">Name</th>
                 <th className="p-3">Code</th>
+                <th className="p-3">Default / hr</th>
                 <th className="p-3">Address</th>
                 <th className="p-3 text-right">Actions</th>
               </tr>
@@ -98,7 +107,7 @@ export default function AdminLocationsPage() {
             <tbody>
               {lots.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-500">
+                  <td colSpan={5} className="p-8 text-center text-slate-500">
                     <Building2 className="mx-auto mb-2 h-10 w-10 opacity-40" /> No sites yet — add one to represent a parking location.
                   </td>
                 </tr>
@@ -114,6 +123,7 @@ export default function AdminLocationsPage() {
                       ) : null}
                     </td>
                     <td className="p-3 font-mono text-xs text-slate-600 dark:text-slate-400">{l.code}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">{formatRwfPerHour(l.defaultHourlyRateRwf ?? 0)}</td>
                     <td className="p-3 text-slate-600 dark:text-slate-400">{l.address || '—'}</td>
                     <td className="p-3 text-right">
                       <button
@@ -162,6 +172,19 @@ export default function AdminLocationsPage() {
                 className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 placeholder="City, neighborhood, or full address"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">Default hourly rate (RWF)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                required
+                value={form.defaultHourlyRateRwf}
+                onChange={(e) => setForm({ ...form, defaultHourlyRateRwf: Number(e.target.value) })}
+                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              <p className="mt-1 text-[10px] text-slate-500">Used for new spaces and as the site default. Managers can push this rate to all spaces from Site pricing.</p>
             </div>
             <div>
               <label className="mb-1 block text-xs text-slate-600 dark:text-slate-400">

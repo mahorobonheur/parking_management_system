@@ -18,7 +18,7 @@ public static class AppRoles
     /// <summary>Legacy name — still honored in authorization until DB is migrated.</summary>
     public const string User = "User";
 
-    public static readonly string[] All = { Admin, Attendant, Driver };
+    public static readonly string[] All = { Admin, Attendant, ParkingManager, Driver };
 
     public const string StaffRolesCsv = $"{Admin},{Attendant},{ParkingManager}";
 
