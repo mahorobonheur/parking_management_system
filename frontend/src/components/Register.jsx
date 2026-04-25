@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -47,6 +48,7 @@ export default function Register() {
             <input
               type="text"
               value={fullName}
+              required
               onChange={(e) => setFullName(e.target.value)}
               className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
             />
@@ -72,10 +74,21 @@ export default function Register() {
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">8+ chars with upper, lower, number, and symbol.</p>
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-400">Confirm Password</label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">8+ chars with upper, lower, number, and symbol.</p>
+          </div>
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:brightness-110 disabled:opacity-50 dark:from-emerald-600 dark:to-teal-600 dark:shadow-emerald-500/20"
+            className="mt-2 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-green-600 to-green-800 py-3 text-md font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:brightness-110 disabled:opacity-50 dark:from-emerald-600 dark:to-teal-600 dark:shadow-emerald-500/20"
           >
             {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : 'Register'}
           </button>
