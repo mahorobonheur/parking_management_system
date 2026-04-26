@@ -196,10 +196,13 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
 app.MapHub<ParkingEventsHub>("/hubs/parking");
 
-// Helps Visual Studio / browser launch URL (no MVC page at "/")
-app.MapGet("/", () => Results.Json(new { name = "ParkingManagementSystem", status = "running", docs = "Use /api/* endpoints (e.g. /api/ParkingSpaces)." }));
+app.MapGet("/api/health", () => Results.Json(new { name = "ParkingManagementSystem", status = "running" }));
+app.MapFallbackToFile("index.html");
 
 app.Run();
