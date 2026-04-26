@@ -47,8 +47,8 @@ export default function Register() {
             <label className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-400">Full name (optional)</label>
             <input
               type="text"
-              value={fullName}
               required
+              value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
             />
