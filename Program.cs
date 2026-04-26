@@ -16,6 +16,8 @@ using ParkingManagementSystem.Options;
 using ParkingManagementSystem.Services;
 using ParkingManagementSystem.Services.Authz;
 
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOptions<JwtOptions>()
@@ -24,9 +26,10 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    ?? builder.Configuration["DATABASE_URL"]
+    ?? throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
