@@ -1,5 +1,7 @@
 # Parking management system
 
+   Live Application Link: `https://parking-management-system-xeif.onrender.com/`
+
 Full-stack app for parking lots, spaces, reservations, live occupancy, and role-based dashboards. The backend is **ASP.NET Core** with JWT auth, **Entity Framework Core**, and **SQL Server**. Two optional UIs live under `frontend/` (React + Vite) and `client/` (React + TypeScript + Vite).
 
 ---
